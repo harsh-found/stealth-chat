@@ -17,6 +17,7 @@ export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   username: text('username').notNull().unique(),
   displayName: text('display_name').notNull(),
+  passwordHash: text('password_hash'),
   about: text('about').notNull().default(''),
   avatarMediaId: uuid('avatar_media_id'),
   phoneE164: text('phone_e164').unique(),
@@ -110,3 +111,27 @@ export const outboxEvents = pgTable('outbox_events', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   processedAt: timestamp('processed_at', { withTimezone: true }),
 });
+
+export const receipts = pgTable(
+  'receipts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    conversationId: uuid('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    deliveredSeq: bigint('delivered_seq', { mode: 'number' }).notNull().default(0),
+    readSeq: bigint('read_seq', { mode: 'number' }).notNull().default(0),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    convUserIdx: index('receipts_conv_user_idx').on(table.conversationId, table.userId),
+  })
+);
+
+export const reactions = pgTable('reactions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  messageId: uuid('message_id').notNull().references(() => messages.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  emoji: text('emoji').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { uuidv7, signAccessToken, verifyAccessToken, hashToken, otpProvider } from '@stealth/core';
+import { uuidv7, signAccessToken, verifyAccessToken, hashToken, otpProvider, hashPassword, verifyPassword } from '@stealth/core';
 import {
   encodeClientFrame,
   decodeClientFrame,
@@ -49,6 +49,14 @@ describe('Core Authentication', () => {
     expect(otpProvider.verifyOtp(phone, '123456')).toBe(true);
     // Already consumed
     expect(otpProvider.verifyOtp(phone, '123456')).toBe(false);
+  });
+
+  it('hashes and verifies passwords securely', () => {
+    const rawPass = 'SuperStealth@2026!';
+    const hashed = hashPassword(rawPass);
+    expect(hashed).toContain(':');
+    expect(verifyPassword(rawPass, hashed)).toBe(true);
+    expect(verifyPassword('WrongPassword', hashed)).toBe(false);
   });
 });
 
