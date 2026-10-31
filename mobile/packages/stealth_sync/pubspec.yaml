@@ -1,0 +1,16 @@
+name: stealth_sync
+description: Pure Dart sync engine for Stealth Chat (WebSockets, binary frames, outbox replay, cursors, reconnection)
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  meta: ^1.11.0
+  web_socket_channel: ^2.4.0
+  stealth_protocol:
+    path: ../stealth_protocol
+
+dev_dependencies:
+  test: ^1.24.0

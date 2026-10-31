@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package stealth.v1;
+
+message Typing {
+  string conversation_id = 1;
+  bool is_typing = 2;
+}
+
+message SubscribePresence {
+  repeated string user_ids = 1;
+}
+
+message Presence {
+  string user_id = 1;
+  bool online = 2;
+  int64 last_seen_ms = 3;
+}

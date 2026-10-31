@@ -1,0 +1,21 @@
+name: stealth_db
+description: Drift database, DAOs, FTS5 offline search, and migrations for Stealth Chat
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  meta: ^1.11.0
+  drift: ^2.20.0
+  sqlite3: ^2.4.0
+  stealth_protocol:
+    path: ../stealth_protocol
+  stealth_sync:
+    path: ../stealth_sync
+
+dev_dependencies:
+  test: ^1.24.0
+  drift_dev: ^2.20.0
+  build_runner: ^2.4.0

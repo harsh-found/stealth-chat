@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package stealth.v1;
+
+import "stealth/v1/chat.proto";
+
+message Hello {
+  string access_token = 1;
+  string device_id = 2;
+  uint32 v = 3;
+  uint64 sync_token = 4;
+}
+
+message ConversationSummary {
+  string conversation_id = 1;
+  uint64 last_seq = 2;
+  uint32 unread_count = 3;
+  string last_message_preview = 4;
+  int64 last_message_at_ms = 5;
+}
+
+message HelloOk {
+  int64 server_time_ms = 1;
+  repeated ConversationSummary changed_conversations = 2;
+}
+
+message SyncRequest {
+  string conversation_id = 1;
+  uint64 after_seq = 2;
+  uint32 limit = 3;
+}
+
+message SyncBatch {
+  string conversation_id = 1;
+  repeated MessageNew messages = 2;
+  bool has_more = 3;
+}

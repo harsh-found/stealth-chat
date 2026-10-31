@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package stealth.v1;
+
+import "stealth/v1/common.proto";
+import "stealth/v1/chat.proto";
+import "stealth/v1/sync.proto";
+import "stealth/v1/presence.proto";
+
+message ClientFrame {
+  uint32 v = 1;              // Protocol version
+  string req_id = 2;         // Client request ID echoed in Ack / Error
+  oneof body {
+    Hello hello = 10;
+    SendMessage send = 11;
+    ReceiptUpTo receipt = 12;
+    Typing typing = 13;
+    SyncRequest sync = 14;
+    SubscribePresence subscribe_presence = 15;
+    Ping ping = 16;
+  }
+}
+
+message ServerFrame {
+  uint32 v = 1;              // Protocol version
+  string req_id = 2;         // Echoed from ClientFrame if matching
+  oneof body {
+    HelloOk hello_ok = 10;
+    Ack ack = 11;
+    Error error = 12;
+    MessageNew message_new = 13;
+    ReceiptUpdate receipt = 14;
+    SyncBatch sync_batch = 15;
+    Presence presence = 16;
+    Pong pong = 17;
+    Kick kick = 18;
+  }
+}

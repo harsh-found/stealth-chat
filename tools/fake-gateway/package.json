@@ -1,0 +1,12 @@
+{
+  "name": "fake-gateway",
+  "version": "1.0.0",
+  "description": "Mock WebSocket server for testing Stealth Chat mobile client independently",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}
