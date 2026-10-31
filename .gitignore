@@ -1,0 +1,20 @@
+# Dart & Flutter
+.dart_tool/
+**/.dart_tool/
+.packages
+**/.packages
+build/
+**/build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Node
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+
+# OS & IDE
+.DS_Store
+.idea/
+*.swp

@@ -12,6 +12,8 @@ class MessageViewModel {
   final String timestampText;
   final MessageTickStatus? status;
   final String? replyToId;
+  final String? replyAuthor;
+  final String? replyText;
 
   const MessageViewModel({
     required this.id,
@@ -23,6 +25,8 @@ class MessageViewModel {
     required this.timestampText,
     this.status,
     this.replyToId,
+    this.replyAuthor,
+    this.replyText,
   });
 
   static List<MessageViewModel> buildViewModels({
@@ -33,6 +37,7 @@ class MessageViewModel {
     if (messages.isEmpty) return const [];
 
     final result = <MessageViewModel>[];
+    final msgMap = {for (final m in messages) m.id: m};
 
     // Messages are ordered descending (index 0 is newest)
     for (int i = 0; i < messages.length; i++) {
@@ -42,8 +47,10 @@ class MessageViewModel {
       final prev = i > 0 ? messages[i - 1] : null;
       final next = i < messages.length - 1 ? messages[i + 1] : null;
 
-      final isPrevSameSender = prev != null && prev.senderId == current.senderId;
-      final isNextSameSender = next != null && next.senderId == current.senderId;
+      final isPrevSameSender =
+          prev != null && prev.senderId == current.senderId;
+      final isNextSameSender =
+          next != null && next.senderId == current.senderId;
 
       // In descending list: next message is chronologically BEFORE current; prev message is AFTER current.
       BubblePosition position;
@@ -87,6 +94,18 @@ class MessageViewModel {
 
       final body = MessageBody.fromBytes(current.payload);
 
+      // Parent reply resolution
+      String? replyAuthor;
+      String? replyText;
+      if (current.replyToId != null) {
+        final parent = msgMap[current.replyToId];
+        if (parent != null) {
+          replyAuthor = parent.senderId == currentUserId ? 'You' : 'Sender';
+          final parentBody = MessageBody.fromBytes(parent.payload);
+          replyText = parentBody.text.isNotEmpty ? parentBody.text : '[Media]';
+        }
+      }
+
       result.add(
         MessageViewModel(
           id: current.id,
@@ -98,6 +117,8 @@ class MessageViewModel {
           timestampText: formattedTime,
           status: tickStatus,
           replyToId: current.replyToId,
+          replyAuthor: replyAuthor,
+          replyText: replyText,
         ),
       );
     }

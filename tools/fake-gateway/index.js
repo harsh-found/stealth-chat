@@ -109,6 +109,23 @@ wss.on('connection', (ws) => {
     if (body.send) {
       const { message_id, conversation_id, kind, payload, reply_to_id, client_ts_ms } = body.send;
       const conv = getConversation(conversation_id);
+
+      // Check idempotency: duplicate message_id returns original Ack without duplicate row
+      const existing = conv.messages.find((m) => m.message_id === message_id);
+      if (existing) {
+        console.log(`[fake-gateway] Idempotent retry for message_id=${message_id}, returning seq=${existing.seq}`);
+        sendFrame(ws, {
+          v: v || 1,
+          req_id: req_id || '',
+          ack: {
+            message_id: existing.message_id,
+            seq: existing.seq,
+            server_ts_ms: existing.server_ts_ms,
+          },
+        });
+        return;
+      }
+
       conv.lastSeq += 1;
       const seq = conv.lastSeq;
       const serverTs = Date.now();

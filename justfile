@@ -28,5 +28,19 @@ test-mobile:
     cd mobile/packages/stealth_ui_kit && flutter test
     cd mobile/app && flutter test
 
-check: test-server test-mobile
-    @echo "==> All test suites passed successfully!"
+format-check:
+    @echo "==> Checking Dart formatting..."
+    dart format --output=none --set-exit-if-changed mobile/
+
+analyze:
+    @echo "==> Analyzing mobile packages and app..."
+    cd mobile/app && flutter analyze
+    cd mobile/packages/stealth_ui_kit && flutter analyze
+    dart analyze mobile/packages/stealth_protocol mobile/packages/stealth_crypto mobile/packages/stealth_sync mobile/packages/stealth_db
+
+typecheck-server:
+    @echo "==> Typechecking server packages..."
+    cd server && pnpm run --filter "*" build
+
+check: format-check analyze typecheck-server test-server test-mobile
+    @echo "==> All format, analysis, typecheck, and test suites passed successfully!"

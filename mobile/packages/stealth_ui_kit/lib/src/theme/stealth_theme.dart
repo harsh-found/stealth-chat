@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'stealth_colors.dart';
 
 class StealthTheme {
-  static ThemeData darkTheme({Color accentColor = StealthColors.accentElectricBlue}) {
+  static ThemeData darkTheme(
+      {Color accentColor = StealthColors.accentElectricBlue}) {
     return ThemeData(
       brightness: Brightness.dark,
       scaffoldBackgroundColor: StealthColors.background,

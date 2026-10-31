@@ -113,8 +113,14 @@ class GroupedBubble extends StatelessWidget {
         ),
         child: Container(
           margin: EdgeInsets.only(
-            top: position == BubblePosition.first || position == BubblePosition.single ? 6 : 2,
-            bottom: position == BubblePosition.last || position == BubblePosition.single ? 6 : 2,
+            top: position == BubblePosition.first ||
+                    position == BubblePosition.single
+                ? 6
+                : 2,
+            bottom: position == BubblePosition.last ||
+                    position == BubblePosition.single
+                ? 6
+                : 2,
             left: isOutgoing ? 48 : 12,
             right: isOutgoing ? 12 : 48,
           ),
@@ -132,13 +138,15 @@ class GroupedBubble extends StatelessWidget {
                   onTap: onReplyTap,
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.25),
                       borderRadius: BorderRadius.circular(6),
                       border: Border(
                         left: BorderSide(
-                          color: isOutgoing ? Colors.white70 : theme.accent.color,
+                          color:
+                              isOutgoing ? Colors.white70 : theme.accent.color,
                           width: 3,
                         ),
                       ),
@@ -152,7 +160,9 @@ class GroupedBubble extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: isOutgoing ? Colors.white : theme.accent.lightColor,
+                              color: isOutgoing
+                                  ? Colors.white
+                                  : theme.accent.lightColor,
                             ),
                           ),
                         Text(
@@ -170,26 +180,29 @@ class GroupedBubble extends StatelessWidget {
                 ),
               ],
               content,
-              const SizedBox(height: 4),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  const Spacer(),
-                  Text(
-                    timestampText,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: isOutgoing
-                          ? Colors.white.withValues(alpha: 0.7)
-                          : theme.textSecondary,
-                    ),
+              Align(
+                alignment: Alignment.bottomRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4, left: 12),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        timestampText,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isOutgoing
+                              ? Colors.white.withValues(alpha: 0.7)
+                              : theme.textSecondary,
+                        ),
+                      ),
+                      if (isOutgoing && status != null) ...[
+                        const SizedBox(width: 4),
+                        MessageStatusTicks(status: status!, size: 13),
+                      ],
+                    ],
                   ),
-                  if (isOutgoing && status != null) ...[
-                    const SizedBox(width: 4),
-                    MessageStatusTicks(status: status!, size: 13),
-                  ],
-                ],
+                ),
               ),
             ],
           ),

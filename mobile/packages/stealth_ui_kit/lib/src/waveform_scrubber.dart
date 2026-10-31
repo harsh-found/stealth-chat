@@ -45,7 +45,9 @@ class WaveformScrubber extends StatelessWidget {
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
             icon: Icon(
-              isPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_filled_rounded,
+              isPlaying
+                  ? Icons.pause_circle_filled_rounded
+                  : Icons.play_circle_filled_rounded,
               color: activeColor,
             ),
           ),
@@ -87,7 +89,9 @@ class WaveformScrubber extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w500,
-              color: isOutgoing ? Colors.white.withValues(alpha: 0.85) : theme.textSecondary,
+              color: isOutgoing
+                  ? Colors.white.withValues(alpha: 0.85)
+                  : theme.textSecondary,
             ),
           ),
         ],

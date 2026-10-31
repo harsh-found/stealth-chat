@@ -107,10 +107,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       ),
                       subtitle: Text(
                         'Conversation: ${msg.conversationId}',
-                        style: TextStyle(fontSize: 12, color: theme.textSecondary),
+                        style:
+                            TextStyle(fontSize: 12, color: theme.textSecondary),
                       ),
                       trailing: Text(
-                        msg.createdLocalAt.toLocal().toString().substring(11, 16),
+                        msg.createdLocalAt
+                            .toLocal()
+                            .toString()
+                            .substring(11, 16),
                         style: TextStyle(fontSize: 11, color: theme.textMuted),
                       ),
                       onTap: () {

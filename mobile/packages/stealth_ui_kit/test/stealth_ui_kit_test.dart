@@ -28,7 +28,8 @@ void main() {
       expect(container.color, equals(const Color(0xFF059669)));
     });
 
-    testWidgets('GroupedBubble renders outgoing message with status ticks and reply',
+    testWidgets(
+        'GroupedBubble renders outgoing message with status ticks and reply',
         (tester) async {
       bool replyTapped = false;
 
@@ -95,6 +96,51 @@ void main() {
       expect(replyTriggered, isTrue);
     });
 
+    testWidgets(
+        'SwipeToReply handles rapid consecutive drags smoothly without error',
+        (tester) async {
+      int replyCount = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: StealthTheme(
+              data: const StealthThemeData(),
+              child: Center(
+                child: SizedBox(
+                  width: 300,
+                  height: 60,
+                  child: SwipeToReply(
+                    onReply: () => replyCount++,
+                    child: Container(
+                      color: Colors.blue,
+                      child: const Text('Swipe rapid'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Start drag 1
+      final gesture1 =
+          await tester.startGesture(tester.getCenter(find.text('Swipe rapid')));
+      await gesture1.moveBy(const Offset(100, 0));
+      await gesture1.up();
+      // Pump partially mid-spring
+      await tester.pump(const Duration(milliseconds: 50));
+      // Rapid drag 2 mid-animation
+      final gesture2 =
+          await tester.startGesture(tester.getCenter(find.text('Swipe rapid')));
+      await gesture2.moveBy(const Offset(100, 0));
+      await gesture2.up();
+      await tester.pumpAndSettle();
+
+      expect(replyCount, equals(2));
+    });
+
     testWidgets('WaveformScrubber renders play button and triggers seek',
         (tester) async {
       bool playPauseCalled = false;
@@ -128,10 +174,12 @@ void main() {
       await tester.tap(find.byIcon(Icons.play_circle_filled_rounded));
       expect(playPauseCalled, isTrue);
 
-      final waveformFinder = find.descendant(
-        of: find.byType(WaveformScrubber),
-        matching: find.byType(CustomPaint),
-      ).last;
+      final waveformFinder = find
+          .descendant(
+            of: find.byType(WaveformScrubber),
+            matching: find.byType(CustomPaint),
+          )
+          .last;
       await tester.tap(waveformFinder);
       expect(seekProgress, isNotNull);
     });
@@ -139,13 +187,13 @@ void main() {
     testWidgets('ZeroFlickerKeyboardTray maintains tray height when open',
         (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: ZeroFlickerKeyboardTray(
               isTrayOpen: true,
               defaultTrayHeight: 250,
-              trayContent: const Text('Emoji Tray Content'),
-              child: const Text('Chat Messages'),
+              trayContent: Text('Emoji Tray Content'),
+              child: Text('Chat Messages'),
             ),
           ),
         ),

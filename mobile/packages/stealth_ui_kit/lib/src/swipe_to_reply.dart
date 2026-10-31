@@ -49,8 +49,18 @@ class _SwipeToReplyState extends State<SwipeToReply>
     super.dispose();
   }
 
+  void _onHorizontalDragStart(DragStartDetails details) {
+    if (!widget.enabled) return;
+    if (_controller.isAnimating) {
+      _controller.stop();
+    }
+  }
+
   void _onHorizontalDragUpdate(DragUpdateDetails details) {
     if (!widget.enabled) return;
+    if (_controller.isAnimating) {
+      _controller.stop();
+    }
 
     // Swipe right to reply
     final delta = details.primaryDelta ?? 0;
@@ -88,6 +98,7 @@ class _SwipeToReplyState extends State<SwipeToReply>
     final progress = (_dragOffset / _triggerThreshold).clamp(0.0, 1.0);
 
     return GestureDetector(
+      onHorizontalDragStart: _onHorizontalDragStart,
       onHorizontalDragUpdate: _onHorizontalDragUpdate,
       onHorizontalDragEnd: _onHorizontalDragEnd,
       behavior: HitTestBehavior.translucent,

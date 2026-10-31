@@ -41,9 +41,9 @@ class _ZeroFlickerKeyboardTrayState extends State<ZeroFlickerKeyboardTray>
   void didChangeMetrics() {
     super.didChangeMetrics();
     // Cache the keyboard height when it appears
-    final bottomInset =
-        WidgetsBinding.instance.platformDispatcher.views.first.viewInsets.bottom /
-            WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
+    final bottomInset = WidgetsBinding
+            .instance.platformDispatcher.views.first.viewInsets.bottom /
+        WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
     if (bottomInset > 100.0) {
       setState(() {
         _cachedKeyboardHeight = bottomInset;

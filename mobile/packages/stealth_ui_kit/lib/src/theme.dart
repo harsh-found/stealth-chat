@@ -127,7 +127,8 @@ class StealthTheme extends InheritedWidget {
     required super.child,
   });
 
-  static ThemeData darkTheme({Color accentColor = StealthColors.accentElectricBlue}) {
+  static ThemeData darkTheme(
+      {Color accentColor = StealthColors.accentElectricBlue}) {
     return ThemeData(
       brightness: Brightness.dark,
       scaffoldBackgroundColor: StealthColors.background,

@@ -25,7 +25,8 @@ class WaveformWidget extends StatelessWidget {
           onTapDown: onSeek == null
               ? null
               : (details) {
-                  final p = (details.localPosition.dx / constraints.maxWidth).clamp(0.0, 1.0);
+                  final p = (details.localPosition.dx / constraints.maxWidth)
+                      .clamp(0.0, 1.0);
                   onSeek!(p);
                 },
           child: CustomPaint(
@@ -43,8 +44,38 @@ class WaveformWidget extends StatelessWidget {
   }
 
   static const List<int> _defaultAmplitudes = [
-    15, 30, 45, 60, 40, 25, 55, 75, 90, 80, 65, 45, 30, 50, 70, 85,
-    60, 40, 35, 50, 75, 95, 65, 40, 30, 55, 70, 45, 35, 20, 15, 10
+    15,
+    30,
+    45,
+    60,
+    40,
+    25,
+    55,
+    75,
+    90,
+    80,
+    65,
+    45,
+    30,
+    50,
+    70,
+    85,
+    60,
+    40,
+    35,
+    50,
+    75,
+    95,
+    65,
+    40,
+    30,
+    55,
+    70,
+    45,
+    35,
+    20,
+    15,
+    10
   ];
 }
 
@@ -65,12 +96,13 @@ class _WaveformPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (amplitudes.isEmpty) return;
 
-    final barWidth = 2.4;
-    final spacing = 1.8;
+    const barWidth = 2.4;
+    const spacing = 1.8;
     final totalBars = amplitudes.length;
     final totalWidth = totalBars * (barWidth + spacing) - spacing;
 
-    final startX = (size.width - totalWidth) / 2 > 0 ? (size.width - totalWidth) / 2 : 0.0;
+    final startX =
+        (size.width - totalWidth) / 2 > 0 ? (size.width - totalWidth) / 2 : 0.0;
     final centerY = size.height / 2;
 
     final activePaint = Paint()

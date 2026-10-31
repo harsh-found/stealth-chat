@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:math';
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:meta/meta.dart';
 import 'package:stealth_protocol/stealth_protocol.dart';
@@ -7,6 +7,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'models.dart';
 import 'outbox_storage.dart';
+import 'reconnect_strategy.dart';
 
 typedef WebSocketChannelFactory = WebSocketChannel Function(Uri uri);
 
@@ -16,6 +17,7 @@ class StealthSyncClient {
   final String deviceId;
   final OutboxStorage outboxStorage;
   final WebSocketChannelFactory _channelFactory;
+  final ReconnectStrategy _reconnectStrategy;
 
   WebSocketChannel? _channel;
   StreamSubscription<dynamic>? _subscription;
@@ -25,7 +27,6 @@ class StealthSyncClient {
   bool _isDisposed = false;
   bool _isConnected = false;
   int _reconnectAttempts = 0;
-  final Random _random = Random();
 
   final StreamController<SyncEvent> _eventController =
       StreamController<SyncEvent>.broadcast();
@@ -37,8 +38,10 @@ class StealthSyncClient {
     required this.accessToken,
     required this.deviceId,
     required this.outboxStorage,
+    ReconnectStrategy? reconnectStrategy,
     @visibleForTesting WebSocketChannelFactory? channelFactory,
-  }) : _channelFactory =
+  })  : _reconnectStrategy = reconnectStrategy ?? ReconnectStrategy(),
+        _channelFactory =
             channelFactory ?? ((uri) => WebSocketChannel.connect(uri));
 
   Stream<SyncEvent> get events => _eventController.stream;
@@ -67,7 +70,6 @@ class StealthSyncClient {
         onDone: _onDone,
       );
 
-      // Immediately send Hello frame
       _sendFrame(
         ClientFrame(
           reqId: 'hello_${DateTime.now().millisecondsSinceEpoch}',
@@ -79,7 +81,7 @@ class StealthSyncClient {
           ),
         ),
       );
-    } catch (e) {
+    } catch (_) {
       _scheduleReconnect();
     }
   }
@@ -92,16 +94,14 @@ class StealthSyncClient {
       } else if (data is List<int>) {
         bytes = Uint8List.fromList(data);
       } else if (data is String) {
-        bytes = Uint8List.fromList(data.codeUnits);
+        bytes = Uint8List.fromList(utf8.encode(data));
       } else {
         return;
       }
 
       final frame = ServerFrame.fromBytes(bytes);
       _handleServerFrame(frame);
-    } catch (e) {
-      // Invalid frame ignored or handled safely
-    }
+    } catch (_) {}
   }
 
   void _handleServerFrame(ServerFrame frame) {
@@ -117,10 +117,8 @@ class StealthSyncClient {
         setLastKnownSeq(conv.conversationId, conv.lastSeq);
       }
 
-      // Replay pending outbox items upon connection
       _flushOutbox();
     } else if (body is Ack) {
-      // Remove from outbox and advance seq
       outboxStorage.removeItem(body.messageId);
       _eventController.add(
         SyncMessageAcked(
@@ -132,7 +130,6 @@ class StealthSyncClient {
     } else if (body is MessageNew) {
       final prevSeq = _lastKnownSeqs[body.conversationId] ?? 0;
       if (prevSeq > 0 && body.seq > prevSeq + 1) {
-        // Gap detected! Notify and request catchup
         _eventController.add(
           SyncGapDetected(
             conversationId: body.conversationId,
@@ -155,8 +152,6 @@ class StealthSyncClient {
       _eventController.add(SyncPresenceReceived(body));
     } else if (body is ProtocolError) {
       _eventController.add(SyncErrorReceived(body));
-    } else if (body is Pong) {
-      // Heartbeat acknowledged
     } else if (body is Kick) {
       _eventController.add(SyncDisconnected('Session kicked: ${body.reason}'));
       disconnect();
@@ -198,32 +193,22 @@ class StealthSyncClient {
     required int readUptoSeq,
   }) {
     if (!_isConnected) return;
-    _sendFrame(
-      ClientFrame(
-        reqId: 'receipt_${DateTime.now().millisecondsSinceEpoch}',
-        body: ReceiptUpTo(
-          conversationId: conversationId,
-          deliveredUptoSeq: deliveredUptoSeq,
-          readUptoSeq: readUptoSeq,
-        ),
+    _sendFrame(ClientFrame(
+      reqId: 'receipt_${DateTime.now().millisecondsSinceEpoch}',
+      body: ReceiptUpTo(
+        conversationId: conversationId,
+        deliveredUptoSeq: deliveredUptoSeq,
+        readUptoSeq: readUptoSeq,
       ),
-    );
+    ));
   }
 
-  void sendTyping({
-    required String conversationId,
-    required bool isTyping,
-  }) {
+  void sendTyping({required String conversationId, required bool isTyping}) {
     if (!_isConnected) return;
-    _sendFrame(
-      ClientFrame(
-        reqId: 'typing_${DateTime.now().millisecondsSinceEpoch}',
-        body: Typing(
-          conversationId: conversationId,
-          isTyping: isTyping,
-        ),
-      ),
-    );
+    _sendFrame(ClientFrame(
+      reqId: 'typing_${DateTime.now().millisecondsSinceEpoch}',
+      body: Typing(conversationId: conversationId, isTyping: isTyping),
+    ));
   }
 
   void requestSync({
@@ -232,26 +217,22 @@ class StealthSyncClient {
     int limit = 50,
   }) {
     if (!_isConnected) return;
-    _sendFrame(
-      ClientFrame(
-        reqId: 'sync_${DateTime.now().millisecondsSinceEpoch}',
-        body: SyncRequest(
-          conversationId: conversationId,
-          afterSeq: afterSeq,
-          limit: limit,
-        ),
+    _sendFrame(ClientFrame(
+      reqId: 'sync_${DateTime.now().millisecondsSinceEpoch}',
+      body: SyncRequest(
+        conversationId: conversationId,
+        afterSeq: afterSeq,
+        limit: limit,
       ),
-    );
+    ));
   }
 
   void subscribePresence(List<String> userIds) {
     if (!_isConnected) return;
-    _sendFrame(
-      ClientFrame(
-        reqId: 'presence_${DateTime.now().millisecondsSinceEpoch}',
-        body: SubscribePresence(userIds: userIds),
-      ),
-    );
+    _sendFrame(ClientFrame(
+      reqId: 'presence_${DateTime.now().millisecondsSinceEpoch}',
+      body: SubscribePresence(userIds: userIds),
+    ));
   }
 
   void _sendFrame(ClientFrame frame) {
@@ -274,39 +255,21 @@ class StealthSyncClient {
     });
   }
 
-  void _onError(dynamic error) {
-    _handleDisconnect(error);
-  }
-
-  void _onDone() {
-    _handleDisconnect(null);
-  }
+  void _onError(dynamic error) => _handleDisconnect(error);
+  void _onDone() => _handleDisconnect(null);
 
   void _handleDisconnect(dynamic error) {
     final wasConnected = _isConnected;
-    _isConnected = false;
-    _pingTimer?.cancel();
-    _pingTimer = null;
-    _subscription?.cancel();
-    _subscription = null;
-    _channel = null;
-
+    disconnect();
     if (wasConnected) {
       _eventController.add(SyncDisconnected(error));
     }
-
     _scheduleReconnect();
   }
 
   void _scheduleReconnect() {
     if (_isDisposed || _reconnectTimer != null) return;
-
-    // Exponential backoff: 0.5s doubling to 30s, +/- 30% jitter
-    final baseDelayMs = min(500 * pow(2, _reconnectAttempts), 30000).toInt();
-    final jitterMultiplier = 0.7 + (_random.nextDouble() * 0.6); // 0.7 to 1.3
-    final delayMs = (baseDelayMs * jitterMultiplier).toInt();
-
-    _reconnectAttempts++;
+    final delayMs = _reconnectStrategy.getDelayMs(_reconnectAttempts++);
     _reconnectTimer = Timer(Duration(milliseconds: delayMs), () {
       _reconnectTimer = null;
       connect();

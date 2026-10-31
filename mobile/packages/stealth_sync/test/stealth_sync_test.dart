@@ -7,8 +7,10 @@ import 'package:stealth_protocol/stealth_protocol.dart';
 import 'package:stealth_sync/stealth_sync.dart';
 
 class MockWebSocketChannel implements WebSocketChannel {
-  final StreamController<dynamic> incoming = StreamController<dynamic>.broadcast();
-  final StreamController<dynamic> outgoing = StreamController<dynamic>.broadcast();
+  final StreamController<dynamic> incoming =
+      StreamController<dynamic>.broadcast();
+  final StreamController<dynamic> outgoing =
+      StreamController<dynamic>.broadcast();
 
   @override
   Stream<dynamic> get stream => incoming.stream;
@@ -40,16 +42,19 @@ class _MockSink implements WebSocketSink {
   void add(dynamic data) => _controller.add(data);
 
   @override
-  void addError(Object error, [StackTrace? stackTrace]) => _controller.addError(error, stackTrace);
+  void addError(Object error, [StackTrace? stackTrace]) =>
+      _controller.addError(error, stackTrace);
 
   @override
-  Future addStream(Stream<dynamic> stream) => _controller.addStream(stream);
+  Future<void> addStream(Stream<dynamic> stream) =>
+      _controller.addStream(stream);
 
   @override
-  Future close([int? closeCode, String? closeReason]) async => _controller.close();
+  Future<void> close([int? closeCode, String? closeReason]) async =>
+      _controller.close();
 
   @override
-  Future get done => _controller.done;
+  Future<dynamic> get done => _controller.done;
 }
 
 void main() {
@@ -106,19 +111,21 @@ void main() {
     );
     mockChannel.incoming.add(helloOk.toBytes());
 
-    await Future.delayed(const Duration(milliseconds: 30));
+    await Future<void>.delayed(const Duration(milliseconds: 30));
     expect(client.isConnected, isTrue);
     expect(events.whereType<SyncConnected>().length, equals(1));
   });
 
-  test('Send message persists to outbox, transmits on connect, and Ack removes from outbox', () async {
+  test(
+      'Send message persists to outbox, transmits on connect, and Ack removes from outbox',
+      () async {
     client.connect();
 
     // Simulate HelloOk to get connected
     mockChannel.incoming.add(ServerFrame(
       body: HelloOk(serverTimeMs: 1730390000000),
     ).toBytes());
-    await Future.delayed(const Duration(milliseconds: 20));
+    await Future<void>.delayed(const Duration(milliseconds: 20));
 
     final msgId = '018f3a22-9a3b-7b00-8000-123456789abc';
     final futureSent = mockChannel.outgoing.stream.first;
@@ -149,7 +156,7 @@ void main() {
       ),
     ).toBytes());
 
-    await Future.delayed(const Duration(milliseconds: 30));
+    await Future<void>.delayed(const Duration(milliseconds: 30));
     pending = await storage.getPendingItems();
     expect(pending.isEmpty, isTrue);
   });
@@ -173,7 +180,7 @@ void main() {
       ),
     ).toBytes());
 
-    await Future.delayed(const Duration(milliseconds: 30));
+    await Future<void>.delayed(const Duration(milliseconds: 30));
     final gaps = events.whereType<SyncGapDetected>().toList();
     expect(gaps.length, equals(1));
     expect(gaps.first.conversationId, equals('conv-1'));
@@ -186,7 +193,7 @@ void main() {
     mockChannel.incoming.add(ServerFrame(
       body: HelloOk(serverTimeMs: 1730390000000),
     ).toBytes());
-    await Future.delayed(const Duration(milliseconds: 20));
+    await Future<void>.delayed(const Duration(milliseconds: 20));
 
     final futureSent = mockChannel.outgoing.stream.first;
     client.sendReceipt(

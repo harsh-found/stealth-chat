@@ -10,7 +10,8 @@ class Conversations extends Table {
   DateTimeColumn get lastMessageAt => dateTime().nullable()();
   IntColumn get unreadCount => integer().withDefault(const Constant(0))();
   IntColumn get mentionCount => integer().withDefault(const Constant(0))();
-  Int64Column get peerDeliveredSeq => int64().clientDefault(() => BigInt.zero)();
+  Int64Column get peerDeliveredSeq =>
+      int64().clientDefault(() => BigInt.zero)();
   Int64Column get peerReadSeq => int64().clientDefault(() => BigInt.zero)();
   DateTimeColumn get mutedUntil => dateTime().nullable()();
   DateTimeColumn get pinnedAt => dateTime().nullable()();
@@ -42,7 +43,8 @@ class Messages extends Table {
   IntColumn get kind => integer().withDefault(const Constant(1))();
   BlobColumn get payload => blob()();
   TextColumn get searchText => text().nullable()();
-  TextColumn get state => text().withDefault(const Constant('pending'))(); // pending, sending, sent, failed
+  TextColumn get state => text().withDefault(
+      const Constant('pending'))(); // pending, sending, sent, failed
   TextColumn get replyToId => text().nullable()();
   IntColumn get editVersion => integer().withDefault(const Constant(0))();
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();

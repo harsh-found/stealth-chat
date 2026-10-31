@@ -9,13 +9,15 @@ void main() {
 
     test('encrypt passes through bytes without alteration', () async {
       final input = Uint8List.fromList(utf8.encode('Stealth Message'));
-      final encrypted = await cipher.encrypt(recipientId: 'user_123', plaintext: input);
+      final encrypted =
+          await cipher.encrypt(recipientId: 'user_123', plaintext: input);
       expect(encrypted, equals(input));
     });
 
     test('decrypt passes through bytes without alteration', () async {
       final input = Uint8List.fromList(utf8.encode('Stealth Decrypted'));
-      final decrypted = await cipher.decrypt(senderId: 'user_456', ciphertext: input);
+      final decrypted =
+          await cipher.decrypt(senderId: 'user_456', ciphertext: input);
       expect(decrypted, equals(input));
     });
   });

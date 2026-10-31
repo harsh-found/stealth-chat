@@ -43,7 +43,8 @@ class _StealthChatBubbleState extends State<StealthChatBubble>
     if (widget.onSwipeReply == null) return;
     if (details.primaryDelta! > 0) {
       setState(() {
-        _dragOffset = (_dragOffset + details.primaryDelta! * 0.45).clamp(0.0, 70.0);
+        _dragOffset =
+            (_dragOffset + details.primaryDelta! * 0.45).clamp(0.0, 70.0);
         if (_dragOffset >= 45.0 && !_thresholdReached) {
           _thresholdReached = true;
           HapticFeedback.lightImpact();
@@ -66,8 +67,10 @@ class _StealthChatBubbleState extends State<StealthChatBubble>
 
   @override
   Widget build(BuildContext context) {
-    final bubbleColor = widget.isMe ? widget.accentColor : StealthColors.bubbleIncoming;
-    final alignment = widget.isMe ? Alignment.centerRight : Alignment.centerLeft;
+    final bubbleColor =
+        widget.isMe ? widget.accentColor : StealthColors.bubbleIncoming;
+    final alignment =
+        widget.isMe ? Alignment.centerRight : Alignment.centerLeft;
 
     final borderRadius = BorderRadius.only(
       topLeft: const Radius.circular(16),
@@ -101,7 +104,8 @@ class _StealthChatBubbleState extends State<StealthChatBubble>
                   ),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
@@ -119,7 +123,9 @@ class _StealthChatBubbleState extends State<StealthChatBubble>
                             borderRadius: BorderRadius.circular(6),
                             border: Border(
                               left: BorderSide(
-                                color: widget.isMe ? Colors.white70 : widget.accentColor,
+                                color: widget.isMe
+                                    ? Colors.white70
+                                    : widget.accentColor,
                                 width: 3,
                               ),
                             ),
@@ -130,7 +136,9 @@ class _StealthChatBubbleState extends State<StealthChatBubble>
                               Text(
                                 widget.replyAuthor ?? 'Reply',
                                 style: TextStyle(
-                                  color: widget.isMe ? Colors.white : widget.accentColor,
+                                  color: widget.isMe
+                                      ? Colors.white
+                                      : widget.accentColor,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                 ),

@@ -1,0 +1,20 @@
+name: mobile_workspace
+publish_to: none
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+# Workspace definition for mobile flutter app and pure Dart packages
+workspace:
+  - app
+  - packages/stealth_protocol
+  - packages/stealth_crypto
+  - packages/stealth_sync
+  - packages/stealth_db
+  - packages/stealth_ui_kit
+
+# Drift SQLite3 Multiple Ciphers native hooks entry
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3mc

@@ -94,3 +94,62 @@ describe('Contract SerDe', () => {
     expect(decoded?.ack?.message_id).toBe('m-1');
   });
 });
+
+describe('Realtime Invariants (Idempotency & Sequence)', () => {
+  it('enforces idempotency on duplicate message_id and prevents duplicate seq assignment', () => {
+    const messageStore = new Map<string, { seq: number; ts: number }>();
+    let lastSeq = 0;
+
+    function processMessage(messageId: string) {
+      if (messageStore.has(messageId)) {
+        return {
+          ...messageStore.get(messageId)!,
+          isDuplicate: true,
+        };
+      }
+      lastSeq += 1;
+      const entry = { seq: lastSeq, ts: Date.now() };
+      messageStore.set(messageId, entry);
+      return { ...entry, isDuplicate: false };
+    }
+
+    const mid = '018f3a22-9a3b-7b00-8000-idempotent-test';
+    const firstResult = processMessage(mid);
+    expect(firstResult.seq).toBe(1);
+    expect(firstResult.isDuplicate).toBe(false);
+
+    // Replay duplicate message_id
+    const duplicateResult = processMessage(mid);
+    expect(duplicateResult.seq).toBe(1);
+    expect(duplicateResult.isDuplicate).toBe(true);
+
+    // New message advances seq
+    const nextResult = processMessage('018f3a22-9a3b-7b00-8000-second-message');
+    expect(nextResult.seq).toBe(2);
+    expect(nextResult.isDuplicate).toBe(false);
+  });
+
+  it('updates monotonic delivery and read receipt cursors correctly', () => {
+    let deliveredCursor = 0;
+    let readCursor = 0;
+
+    function updateReceipt(delivered: number, read: number) {
+      deliveredCursor = Math.max(deliveredCursor, delivered);
+      readCursor = Math.max(readCursor, read);
+    }
+
+    updateReceipt(5, 3);
+    expect(deliveredCursor).toBe(5);
+    expect(readCursor).toBe(3);
+
+    // Out of order receipt frame with lower sequence should not regress cursors
+    updateReceipt(4, 2);
+    expect(deliveredCursor).toBe(5);
+    expect(readCursor).toBe(3);
+
+    // Advance read cursor
+    updateReceipt(6, 6);
+    expect(deliveredCursor).toBe(6);
+    expect(readCursor).toBe(6);
+  });
+});

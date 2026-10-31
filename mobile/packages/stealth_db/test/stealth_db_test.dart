@@ -18,7 +18,8 @@ void main() {
   });
 
   group('StealthDatabase', () {
-    test('sendOptimisticMessage inserts message and outbox row atomically', () async {
+    test('sendOptimisticMessage inserts message and outbox row atomically',
+        () async {
       await db.upsertConversation(
         id: 'conv_1',
         title: 'Alice',
@@ -43,7 +44,8 @@ void main() {
       expect(pendingOutbox.first.messageId, equals(msg.id));
     });
 
-    test('handleAck updates message state to sent and removes outbox entry', () async {
+    test('handleAck updates message state to sent and removes outbox entry',
+        () async {
       await db.upsertConversation(id: 'conv_1', lastSeq: 5);
       await db.sendOptimisticMessage(
         messageId: 'msg_ack_test',
@@ -105,7 +107,8 @@ void main() {
         messageId: 'msg_fts_1',
         conversationId: 'conv_1',
         senderId: 'user_me',
-        payload: Uint8List.fromList(utf8.encode('Secret rendezvous at midnight')),
+        payload:
+            Uint8List.fromList(utf8.encode('Secret rendezvous at midnight')),
         previewText: 'Secret rendezvous at midnight',
       );
 
@@ -120,6 +123,30 @@ void main() {
       final searchResults = await db.searchMessages('rendezvous');
       expect(searchResults.length, equals(1));
       expect(searchResults.first.id, equals('msg_fts_1'));
+    });
+
+    test('consecutive optimistic sends have strictly increasing sortKeys',
+        () async {
+      await db.upsertConversation(id: 'conv_fifo', lastSeq: 10);
+
+      final msg1 = await db.sendOptimisticMessage(
+        messageId: 'msg_1',
+        conversationId: 'conv_fifo',
+        senderId: 'user_me',
+        payload: Uint8List.fromList(utf8.encode('First')),
+        previewText: 'First',
+      );
+
+      final msg2 = await db.sendOptimisticMessage(
+        messageId: 'msg_2',
+        conversationId: 'conv_fifo',
+        senderId: 'user_me',
+        payload: Uint8List.fromList(utf8.encode('Second')),
+        previewText: 'Second',
+      );
+
+      expect(msg2.sortKey > msg1.sortKey, isTrue);
+      expect(msg2.sortKey, equals(msg1.sortKey + BigInt.one));
     });
   });
 }

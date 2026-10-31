@@ -26,6 +26,8 @@ interface SocketContext {
 const activeSockets = new Map<WebSocket, SocketContext>();
 // In-memory conversation sequence cache
 const convSequences = new Map<string, number>();
+// In-memory processed messages cache for idempotency
+const processedMessages = new Map<string, { seq: number; serverTs: number; message: MessageNew }>();
 
 function sendServerFrame(ws: WebSocket, frame: ServerFrame) {
   if (ws.readyState === ws.OPEN) {
@@ -131,12 +133,47 @@ fastify.get('/ws', { websocket: true }, (socket, req) => {
     // 3. SendMessage
     if (frame.send) {
       const { message_id, conversation_id, kind, payload, reply_to_id } = frame.send;
+
+      // Check idempotency: duplicate message_id returns original Ack without duplicate row
+      const existing = processedMessages.get(message_id);
+      if (existing) {
+        logger.info('Duplicate message_id received, returning idempotent Ack', { message_id, seq: existing.seq });
+        sendServerFrame(ws, {
+          v: v || 1,
+          req_id: req_id || '',
+          ack: {
+            message_id,
+            seq: existing.seq,
+            server_ts_ms: existing.serverTs,
+          },
+        });
+        return;
+      }
+
       const currentSeq = convSequences.get(conversation_id) || 0;
       const nextSeq = currentSeq + 1;
       convSequences.set(conversation_id, nextSeq);
 
       const serverTs = Date.now();
       logger.info('Message processed', { conversation_id, seq: nextSeq, message_id });
+
+      const newMsg: MessageNew = {
+        conversation_id,
+        seq: nextSeq,
+        message_id,
+        sender_id: ctx.userId || 'system',
+        kind: kind || 1,
+        payload,
+        reply_to_id,
+        server_ts_ms: serverTs,
+        edit_version: 0,
+      };
+
+      processedMessages.set(message_id, {
+        seq: nextSeq,
+        serverTs,
+        message: newMsg,
+      });
 
       // Reply with Ack immediately
       sendServerFrame(ws, {
@@ -150,18 +187,6 @@ fastify.get('/ws', { websocket: true }, (socket, req) => {
       });
 
       // Broadcast MessageNew to all listeners
-      const newMsg: MessageNew = {
-        conversation_id,
-        seq: nextSeq,
-        message_id,
-        sender_id: ctx.userId || 'system',
-        kind: kind || 1,
-        payload,
-        reply_to_id,
-        server_ts_ms: serverTs,
-        edit_version: 0,
-      };
-
       broadcastFrame({
         v: 1,
         message_new: newMsg,

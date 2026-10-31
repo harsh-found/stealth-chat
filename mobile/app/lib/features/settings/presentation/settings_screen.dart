@@ -79,7 +79,8 @@ class SettingsScreen extends ConsumerWidget {
                           color: color,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: isSelected ? Colors.white : Colors.transparent,
+                            color:
+                                isSelected ? Colors.white : Colors.transparent,
                             width: 2.5,
                           ),
                           boxShadow: isSelected
@@ -93,7 +94,8 @@ class SettingsScreen extends ConsumerWidget {
                               : null,
                         ),
                         child: isSelected
-                            ? const Icon(Icons.check_rounded, color: Colors.white, size: 22)
+                            ? const Icon(Icons.check_rounded,
+                                color: Colors.white, size: 22)
                             : null,
                       ),
                     );
@@ -133,7 +135,8 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                     subtitle: const Text(
                       'Block screenshots and hide screen preview in Android recent tasks.',
-                      style: TextStyle(color: StealthColors.textSecondary, fontSize: 12),
+                      style: TextStyle(
+                          color: StealthColors.textSecondary, fontSize: 12),
                     ),
                     value: isScreenProtected,
                     activeTrackColor: currentAccent,
@@ -149,7 +152,8 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                     subtitle: const Text(
                       'Require fingerprint or face unlock upon app opening.',
-                      style: TextStyle(color: StealthColors.textSecondary, fontSize: 12),
+                      style: TextStyle(
+                          color: StealthColors.textSecondary, fontSize: 12),
                     ),
                     value: isBiometricEnabled,
                     activeTrackColor: currentAccent,
@@ -186,9 +190,11 @@ class SettingsScreen extends ConsumerWidget {
               children: [
                 _buildInfoRow('Wire Protocol', 'Binary Protobuf v1 (WSS)'),
                 const Divider(height: 16, color: StealthColors.border),
-                _buildInfoRow('Local Database', 'Drift (SQLite3 Multiple Ciphers)'),
+                _buildInfoRow(
+                    'Local Database', 'Drift (SQLite3 Multiple Ciphers)'),
                 const Divider(height: 16, color: StealthColors.border),
-                _buildInfoRow('Receipts Engine', 'Monotonic Cursors (Seq-based)'),
+                _buildInfoRow(
+                    'Receipts Engine', 'Monotonic Cursors (Seq-based)'),
                 const Divider(height: 16, color: StealthColors.border),
                 _buildInfoRow('Target SDK', 'Android 16 (API 36 Edge-to-Edge)'),
               ],
@@ -203,7 +209,9 @@ class SettingsScreen extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: StealthColors.textSecondary, fontSize: 13.5)),
+        Text(label,
+            style: const TextStyle(
+                color: StealthColors.textSecondary, fontSize: 13.5)),
         Text(
           value,
           style: const TextStyle(

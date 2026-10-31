@@ -21,7 +21,10 @@ class StealthAvatar extends StatelessWidget {
     if (parts.length >= 2) {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
-    return input.trim().substring(0, input.trim().length >= 2 ? 2 : 1).toUpperCase();
+    return input
+        .trim()
+        .substring(0, input.trim().length >= 2 ? 2 : 1)
+        .toUpperCase();
   }
 
   Color _hashColor(String str) {

@@ -39,9 +39,11 @@ void main() {
       expect(parsed.reqId, equals('req-1'));
       expect(parsed.body, isA<SendMessage>());
       final parsedSend = parsed.body as SendMessage;
-      expect(parsedSend.messageId, equals('018f3a22-9a3b-7b00-8000-123456789abc'));
+      expect(
+          parsedSend.messageId, equals('018f3a22-9a3b-7b00-8000-123456789abc'));
       expect(parsedSend.conversationId, equals('conv-001'));
-      expect(MessageBody.fromBytes(parsedSend.payload).text, equals('Stealth Ping'));
+      expect(MessageBody.fromBytes(parsedSend.payload).text,
+          equals('Stealth Ping'));
     });
 
     test('Ack roundtrip via ServerFrame', () {
@@ -58,7 +60,8 @@ void main() {
       expect(parsed.reqId, equals('req-1'));
       expect(parsed.body, isA<Ack>());
       final parsedAck = parsed.body as Ack;
-      expect(parsedAck.messageId, equals('018f3a22-9a3b-7b00-8000-123456789abc'));
+      expect(
+          parsedAck.messageId, equals('018f3a22-9a3b-7b00-8000-123456789abc'));
       expect(parsedAck.seq, equals(42));
     });
 
