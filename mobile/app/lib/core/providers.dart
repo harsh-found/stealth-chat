@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,15 +7,19 @@ import 'package:stealth_protocol/stealth_protocol.dart';
 import 'package:stealth_sync/stealth_sync.dart';
 import 'package:stealth_ui_kit/stealth_ui_kit.dart';
 
+import '../features/auth/presentation/controllers/auth_controller.dart';
 import '../features/chat/data/chat_repository_impl.dart';
 import '../features/chat/domain/chat_models.dart';
 import '../features/chat/domain/chat_repository.dart';
+import 'api_config.dart';
 import 'seed_data.dart';
 
 /// Database provider (in memory for testing/dev or native isolate)
 final databaseProvider = Provider<StealthDatabase>((ref) {
   final db = StealthDatabase(NativeDatabase.memory());
-  seedInitialData(db);
+  if (Platform.environment.containsKey('FLUTTER_TEST')) {
+    seedInitialData(db);
+  }
   ref.onDispose(() => db.close());
   return db;
 });
@@ -52,15 +57,22 @@ final screenProtectionProvider = StateProvider<bool>((ref) => false);
 final biometricLockProvider = StateProvider<bool>((ref) => false);
 
 /// Current user ID for the session
-final currentUserIdProvider = Provider<String>((ref) => 'user_me');
+final currentUserIdProvider = Provider<String>((ref) {
+  final authState = ref.watch(authControllerProvider);
+  return authState.session?.userId ?? 'user_me';
+});
 
 /// Sync client provider
 final syncClientProvider = Provider<StealthSyncClient>((ref) {
   final db = ref.watch(databaseProvider);
+  final authState = ref.watch(authControllerProvider);
+  final token = authState.session?.accessToken ?? 'dev_token';
+  final deviceId = authState.session?.deviceId ?? 'device_android_1';
+
   final client = StealthSyncClient(
-    gatewayUri: Uri.parse('ws://127.0.0.1:3001/ws'),
-    accessToken: 'dev_token',
-    deviceId: 'device_android_1',
+    gatewayUri: Uri.parse(ApiConfig.defaultWsGatewayUrl),
+    accessToken: token,
+    deviceId: deviceId,
     outboxStorage: db,
   );
 

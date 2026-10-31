@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stealth_ui_kit/stealth_ui_kit.dart';
 
 import '../core/providers.dart';
+import '../features/auth/presentation/auth_screen.dart';
+import '../features/auth/presentation/controllers/auth_controller.dart';
 import '../features/chat_list/presentation/chat_list_screen.dart';
 
 class StealthChatApp extends ConsumerWidget {
@@ -11,6 +13,7 @@ class StealthChatApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeData = ref.watch(stealthThemeProvider);
+    final authState = ref.watch(authControllerProvider);
 
     return StealthTheme(
       data: themeData,
@@ -18,7 +21,9 @@ class StealthChatApp extends ConsumerWidget {
         title: 'Stealth Chat',
         debugShowCheckedModeBanner: false,
         theme: themeData.toFlutterTheme(),
-        home: const ChatListScreen(),
+        home: authState.isAuthenticated
+            ? const ChatListScreen()
+            : const AuthScreen(),
       ),
     );
   }

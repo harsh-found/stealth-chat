@@ -5,6 +5,8 @@ import 'package:stealth_app/app/app.dart';
 import 'package:stealth_app/features/chat/presentation/chat_screen.dart';
 import 'package:stealth_app/features/chat_list/presentation/chat_list_screen.dart';
 import 'package:stealth_app/features/search/presentation/search_screen.dart';
+import 'package:stealth_app/features/auth/presentation/auth_screen.dart';
+import 'package:stealth_app/features/chat_list/presentation/new_chat_screen.dart';
 import 'package:stealth_ui_kit/stealth_ui_kit.dart';
 
 void main() {
@@ -123,6 +125,56 @@ void main() {
 
     // Verify FTS5 search found the message
     expect(find.textContaining('Protobuf'), findsWidgets);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 200));
+  });
+
+  testWidgets('AuthScreen renders cleanly with Sign In / Register toggle',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(
+          home: AuthScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AuthScreen), findsOneWidget);
+    expect(find.text('Stealth Chat'), findsOneWidget);
+    expect(find.text('Sign In'), findsWidgets);
+    expect(find.text('Register'), findsOneWidget);
+
+    // Toggle to Register mode
+    await tester.tap(find.text('Register'));
+    await tester.pumpAndSettle();
+
+    // Verify Display Name field appears
+    expect(find.text('Display Name (e.g. Agent 007)'), findsOneWidget);
+    expect(find.text('Create Account'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 200));
+  });
+
+  testWidgets(
+      'ChatListScreen floating action button navigates to NewChatScreen',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: StealthChatApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Tap floating action button to start new chat
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+
+    // Verify NewChatScreen is opened
+    expect(find.byType(NewChatScreen), findsOneWidget);
+    expect(find.text('Start New Secure Chat'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(milliseconds: 200));

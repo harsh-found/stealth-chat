@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stealth_ui_kit/stealth_ui_kit.dart';
 import '../../../../core/theme_provider.dart';
+import '../../auth/presentation/controllers/auth_controller.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -33,6 +34,73 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         children: [
+          // Section: Active Operator Account
+          const Text(
+            'ACTIVE OPERATOR ACCOUNT',
+            style: TextStyle(
+              color: StealthColors.textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: StealthColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: StealthColors.border, width: 0.8),
+            ),
+            child: Row(
+              children: [
+                StealthAvatar(
+                  name:
+                      ref.watch(authControllerProvider).session?.displayName ??
+                          'Stealth Operator',
+                  size: 46,
+                  isOnline: true,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        ref
+                                .watch(authControllerProvider)
+                                .session
+                                ?.displayName ??
+                            'Stealth Operator',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        '@${ref.watch(authControllerProvider).session?.username ?? "operator"}',
+                        style: const TextStyle(
+                          color: StealthColors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    ref.read(authControllerProvider.notifier).logout();
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Log Out',
+                      style: TextStyle(color: StealthColors.accentCrimson)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 28),
+
           // Section: Appearance & Customization
           const Text(
             'APPEARANCE & ACCENT',

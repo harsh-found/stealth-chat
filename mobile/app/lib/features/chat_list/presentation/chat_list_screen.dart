@@ -5,6 +5,7 @@ import '../../../../core/providers.dart';
 import '../../chat/presentation/chat_screen.dart';
 import '../../search/presentation/search_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
+import 'new_chat_screen.dart';
 
 class ChatListScreen extends ConsumerWidget {
   const ChatListScreen({super.key});
@@ -212,10 +213,7 @@ class ChatListScreen extends ConsumerWidget {
         onPressed: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => const ChatScreen(
-                conversationId: 'conv-new',
-                title: 'New Secure Chat',
-              ),
+              builder: (_) => const NewChatScreen(),
             ),
           );
         },

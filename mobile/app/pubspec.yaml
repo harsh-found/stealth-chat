@@ -23,11 +23,17 @@ dependencies:
     path: ../packages/stealth_sync
   stealth_ui_kit:
     path: ../packages/stealth_ui_kit
+  flutter_secure_storage: ^9.2.2
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
 
+dependency_overrides:
+  path_provider_android: 2.2.15
+
 flutter:
   uses-material-design: true
+
