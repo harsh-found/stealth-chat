@@ -9,16 +9,17 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(authControllerProvider).session;
     final currentAccent = ref.watch(accentColorProvider);
     final isScreenProtected = ref.watch(screenProtectionProvider);
     final isBiometricEnabled = ref.watch(biometricLockProvider);
 
     final accents = [
-      {'name': 'Electric Blue', 'color': StealthColors.accentElectricBlue},
-      {'name': 'Emerald', 'color': StealthColors.accentEmerald},
-      {'name': 'Purple', 'color': StealthColors.accentPurple},
-      {'name': 'Amber', 'color': StealthColors.accentAmber},
-      {'name': 'Crimson', 'color': StealthColors.accentCrimson},
+      StealthColors.accentElectricBlue,
+      StealthColors.accentEmerald,
+      StealthColors.accentPurple,
+      StealthColors.accentAmber,
+      StealthColors.accentCrimson,
     ];
 
     return Scaffold(
@@ -55,9 +56,7 @@ class SettingsScreen extends ConsumerWidget {
             child: Row(
               children: [
                 StealthAvatar(
-                  name:
-                      ref.watch(authControllerProvider).session?.displayName ??
-                          'Stealth Operator',
+                  name: session?.displayName ?? 'Stealth Operator',
                   size: 46,
                   isOnline: true,
                 ),
@@ -67,11 +66,7 @@ class SettingsScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        ref
-                                .watch(authControllerProvider)
-                                .session
-                                ?.displayName ??
-                            'Stealth Operator',
+                        session?.displayName ?? 'Stealth Operator',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 15.5,
@@ -79,7 +74,7 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                       ),
                       Text(
-                        '@${ref.watch(authControllerProvider).session?.username ?? "operator"}',
+                        '@${session?.username ?? "operator"}',
                         style: const TextStyle(
                           color: StealthColors.textSecondary,
                           fontSize: 13,
@@ -133,8 +128,7 @@ class SettingsScreen extends ConsumerWidget {
                 const SizedBox(height: 14),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: accents.map((item) {
-                    final color = item['color'] as Color;
+                  children: accents.map((color) {
                     final isSelected = currentAccent == color;
                     return GestureDetector(
                       onTap: () {
@@ -256,6 +250,8 @@ class SettingsScreen extends ConsumerWidget {
             ),
             child: Column(
               children: [
+                _buildInfoRow('Active Server', ref.watch(serverUrlProvider)),
+                const Divider(height: 16, color: StealthColors.border),
                 _buildInfoRow('Wire Protocol', 'Binary Protobuf v1 (WSS)'),
                 const Divider(height: 16, color: StealthColors.border),
                 _buildInfoRow(

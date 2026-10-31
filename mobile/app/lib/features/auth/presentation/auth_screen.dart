@@ -5,6 +5,7 @@ import '../../../core/providers.dart';
 import 'controllers/auth_controller.dart';
 import 'widgets/auth_header.dart';
 import 'widgets/auth_text_field.dart';
+import 'widgets/server_config_tile.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -243,7 +244,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+                const ServerConfigTile(),
+                const SizedBox(height: 16),
 
                 // Footer security note
                 Row(

@@ -5,6 +5,7 @@ import 'package:stealth_protocol/stealth_protocol.dart';
 import 'package:stealth_sync/stealth_sync.dart';
 import 'package:stealth_ui_kit/stealth_ui_kit.dart';
 
+import '../../auth/data/auth_service.dart';
 import '../domain/chat_models.dart';
 import '../domain/chat_repository.dart';
 
@@ -12,12 +13,16 @@ class ChatRepositoryImpl implements ChatRepository {
   final StealthDatabase database;
   final StealthSyncClient syncClient;
   final String currentUserId;
+  final AuthService? authService;
+  final String? authToken;
   final _uuid = const Uuid();
 
   ChatRepositoryImpl({
     required this.database,
     required this.syncClient,
     required this.currentUserId,
+    this.authService,
+    this.authToken,
   });
 
   @override
@@ -154,6 +159,32 @@ class ChatRepositoryImpl implements ChatRepository {
       deliveredUptoSeq: seq,
       readUptoSeq: seq,
     );
+  }
+
+  @override
+  Future<void> syncRemoteConversations() async {
+    if (authService == null || authToken == null || authToken!.isEmpty) return;
+    try {
+      final list = await authService!.getConversations(authToken!);
+      for (final conv in list) {
+        final id = conv['id'] as String?;
+        if (id == null) continue;
+        final title = conv['title'] as String? ?? 'Direct Chat';
+        final lastSeq = (conv['last_seq'] as num?)?.toInt() ?? 0;
+        final unread = (conv['unread_count'] as num?)?.toInt() ?? 0;
+        final lastAtStr = conv['last_message_at'] as String?;
+        final lastAt = lastAtStr != null ? DateTime.tryParse(lastAtStr) : null;
+
+        await database.upsertConversation(
+          id: id,
+          title: title,
+          lastSeq: lastSeq,
+          lastMessagePreview: 'Encrypted channel active.',
+          lastMessageAt: lastAt ?? DateTime.now(),
+          unreadCount: unread,
+        );
+      }
+    } catch (_) {}
   }
 
   ChatMessageItem _mapMessage(Message m, int peerDelivered, int peerRead) {

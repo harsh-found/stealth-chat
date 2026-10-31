@@ -21,4 +21,6 @@ abstract class ChatRepository {
   void sendTyping({required String conversationId, required bool isTyping});
 
   void markRead({required String conversationId, required int seq});
+
+  Future<void> syncRemoteConversations();
 }

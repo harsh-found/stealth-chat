@@ -6,10 +6,10 @@ import '../domain/auth_models.dart';
 
 class AuthService {
   final FlutterSecureStorage _storage;
-  final String baseUrl;
+  String baseUrl;
   static const String _sessionKey = 'stealth_auth_session_v1';
+  static const String _serverUrlKey = 'stealth_server_url_v1';
 
-  // In-memory fallback for testing or unsupported platforms
   static final Map<String, String> _memoryFallback = {};
 
   AuthService({
@@ -39,6 +39,24 @@ class AuthService {
       await _storage.delete(key: key);
     } catch (_) {}
     _memoryFallback.remove(key);
+  }
+
+  Future<String> getServerUrl() async {
+    final saved = await _readStorage(_serverUrlKey);
+    if (saved != null && saved.trim().isNotEmpty) {
+      baseUrl = saved.trim();
+      return baseUrl;
+    }
+    return baseUrl;
+  }
+
+  Future<void> setServerUrl(String url) async {
+    var cleaned = url.trim();
+    while (cleaned.endsWith('/')) {
+      cleaned = cleaned.substring(0, cleaned.length - 1);
+    }
+    baseUrl = cleaned;
+    await _writeStorage(_serverUrlKey, cleaned);
   }
 
   Future<UserSession?> getSavedSession() async {
@@ -167,6 +185,25 @@ class AuthService {
       return (data['conversation'] as Map<String, dynamic>?) ?? {};
     } else {
       throw Exception('Failed to create conversation');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getConversations(String token) async {
+    final uri = Uri.parse('$baseUrl/api/conversations');
+    final response = await http.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    ).timeout(const Duration(seconds: 10));
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final list = (data['conversations'] as List<dynamic>?) ?? [];
+      return list.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to load conversations');
     }
   }
 }

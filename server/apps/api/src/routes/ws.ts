@@ -1,262 +1,170 @@
 import type { FastifyInstance } from 'fastify';
-import { logger, verifyAccessToken, type Config } from '@stealth/core';
-import {
-  decodeClientFrame,
-  encodeServerFrame,
-  type ServerFrame,
-  type MessageNew,
-} from '@stealth/contracts-ts';
-import { conversations, messages, receipts, participants, type createDbPool } from '@stealth/db';
-import { eq, sql } from 'drizzle-orm';
+import { logger, verifyAccessToken, MessageService, type Config } from '@stealth/core';
+import { decodeClientFrame, encodeServerFrame, type ServerFrame, type MessageNew } from '@stealth/contracts-ts';
+import { conversations, messages, participants, type createDbPool } from '@stealth/db';
+import { eq, and, sql } from 'drizzle-orm';
 import type { WebSocket } from 'ws';
 
-interface SocketContext {
-  ws: WebSocket;
-  authenticated: boolean;
-  userId?: string;
-  deviceId?: string;
-}
+interface SocketCtx { ws: WebSocket; authenticated: boolean; userId?: string; deviceId?: string; }
 
 export function registerWsGateway(
   fastify: FastifyInstance,
   getDb: () => ReturnType<typeof createDbPool>['db'],
   config: Config
 ) {
-  const activeSockets = new Map<WebSocket, SocketContext>();
-  const convSequences = new Map<string, number>();
-  const processedMessages = new Map<string, { seq: number; serverTs: number; message: MessageNew }>();
+  const activeSockets = new Map<WebSocket, SocketCtx>();
 
-  function sendServerFrame(ws: WebSocket, frame: ServerFrame) {
-    if (ws.readyState === ws.OPEN) {
-      const data = encodeServerFrame(frame);
-      ws.send(data);
+  const send = (ws: WebSocket, frame: ServerFrame) => {
+    if (ws.readyState === ws.OPEN) ws.send(encodeServerFrame(frame));
+  };
+
+  const sendToGroup = async (convId: string, frame: ServerFrame, skipWs?: WebSocket) => {
+    try {
+      const parts = await getDb().select({ uId: participants.userId }).from(participants).where(eq(participants.conversationId, convId));
+      const set = new Set(parts.map((p) => p.uId));
+      for (const [ws, c] of activeSockets.entries()) {
+        if (ws !== skipWs && c.authenticated && (set.size === 0 || (c.userId && set.has(c.userId)))) {
+          send(ws, frame);
+        }
+      }
+    } catch {
+      for (const [ws, c] of activeSockets.entries()) {
+        if (ws !== skipWs && c.authenticated) send(ws, frame);
+      }
     }
-  }
+  };
 
-  function broadcastFrame(frame: ServerFrame) {
-    for (const [ws] of activeSockets.entries()) {
-      sendServerFrame(ws, frame);
-    }
-  }
-
-  fastify.get('/ws', { websocket: true }, (socket, req) => {
+  fastify.get('/ws', { websocket: true }, (socket) => {
     const ws = socket as unknown as WebSocket;
-    const ctx: SocketContext = { ws, authenticated: false };
+    const ctx: SocketCtx = { ws, authenticated: false };
     activeSockets.set(ws, ctx);
-    logger.info('WebSocket client connected', { total: activeSockets.size });
 
     ws.on('message', async (raw: Buffer) => {
       const frame = decodeClientFrame(raw);
-      if (!frame) {
-        logger.warn('Failed to decode ClientFrame');
-        return;
-      }
-
+      if (!frame) return;
       const { req_id, v } = frame;
+      const db = getDb();
 
-      // 1. Hello handshake
       if (frame.hello) {
-        const { access_token, device_id } = frame.hello;
         try {
           let userId = 'user_dev';
           try {
-            const verified = verifyAccessToken(access_token, config.jwtSecret);
-            userId = verified.userId;
+            userId = verifyAccessToken(frame.hello.access_token, config.jwtSecret).userId;
           } catch {
-            if (config.nodeEnv === 'development') {
-              userId = 'dev_' + (device_id || 'anon').slice(0, 8);
-            } else {
-              throw new Error('UNAUTHENTICATED');
-            }
+            if (config.nodeEnv === 'development') userId = 'dev_' + (frame.hello.device_id || 'anon').slice(0, 8);
+            else throw new Error('UNAUTHENTICATED');
           }
-
           ctx.authenticated = true;
           ctx.userId = userId;
-          ctx.deviceId = device_id;
+          ctx.deviceId = frame.hello.device_id;
 
-          logger.info('Gateway client authenticated', { userId, deviceId: device_id });
+          const convs = await db.select({
+            cId: participants.conversationId, unread: participants.unreadCount,
+            lastSeq: conversations.lastSeq, lastAt: conversations.lastMessageAt,
+          }).from(participants).innerJoin(conversations, eq(participants.conversationId, conversations.id)).where(eq(participants.userId, userId));
 
-          sendServerFrame(ws, {
-            v: v || 1,
-            req_id: req_id || '',
+          send(ws, {
+            v: v || 1, req_id: req_id || '',
             hello_ok: {
               server_time_ms: Date.now(),
-              changed_conversations: [],
+              changed_conversations: convs.map((c) => ({
+                conversation_id: c.cId, last_seq: c.lastSeq || 0, unread_count: c.unread || 0,
+                last_message_preview: '', last_message_at_ms: c.lastAt ? c.lastAt.getTime() : 0,
+              })),
             },
           });
         } catch {
-          sendServerFrame(ws, {
-            v: v || 1,
-            req_id: req_id || '',
-            error: {
-              req_id: req_id || '',
-              code: 1, // UNAUTHENTICATED
-              message: 'Authentication failed',
-            },
-          });
+          send(ws, { v: v || 1, req_id: req_id || '', error: { req_id: req_id || '', code: 1, message: 'Authentication failed' } });
         }
         return;
       }
 
-      // 2. Ping / Pong
       if (frame.ping) {
-        sendServerFrame(ws, {
-          v: v || 1,
-          req_id: req_id || '',
-          pong: { timestamp_ms: Date.now() },
-        });
+        send(ws, { v: v || 1, req_id: req_id || '', pong: { timestamp_ms: Date.now() } });
         return;
       }
 
-      // Require auth
       if (!ctx.authenticated) {
-        sendServerFrame(ws, {
-          v: v || 1,
-          req_id: req_id || '',
-          error: {
-            req_id: req_id || '',
-            code: 1,
-            message: 'Must authenticate with Hello frame first',
-          },
-        });
+        send(ws, { v: v || 1, req_id: req_id || '', error: { req_id: req_id || '', code: 1, message: 'Must authenticate first' } });
         return;
       }
 
-      // 3. SendMessage
       if (frame.send) {
         const { message_id, conversation_id, kind, payload, reply_to_id } = frame.send;
+        const msgService = new MessageService(db as any);
+        try {
+          const conv = await db.select({ id: conversations.id }).from(conversations).where(eq(conversations.id, conversation_id)).limit(1);
+          if (conv.length === 0) {
+            await db.insert(conversations).values({ id: conversation_id, kind: 'direct', title: 'Direct Chat', createdBy: ctx.userId, lastSeq: 0 }).onConflictDoNothing();
+            if (ctx.userId) await db.insert(participants).values({ conversationId: conversation_id, userId: ctx.userId, role: 'owner' }).onConflictDoNothing();
+          }
 
-        // In-memory or DB idempotency check
-        const existing = processedMessages.get(message_id);
-        if (existing) {
-          sendServerFrame(ws, {
-            v: v || 1,
-            req_id: req_id || '',
-            ack: {
-              message_id,
-              seq: existing.seq,
-              server_ts_ms: existing.serverTs,
+          const payloadStr = typeof payload === 'string' ? payload : Buffer.from(payload as any).toString('base64');
+          const res = await msgService.sendMessage({
+            messageId: message_id, conversationId: conversation_id, senderId: ctx.userId || 'system',
+            senderDeviceId: ctx.deviceId, kind: kind || 1, payload: payloadStr,
+            replyToId: reply_to_id, clientTs: new Date(Number(frame.send.client_ts_ms) || Date.now()),
+          });
+
+          send(ws, { v: v || 1, req_id: req_id || '', ack: { message_id, seq: res.seq, server_ts_ms: res.serverTs } });
+
+          await sendToGroup(conversation_id, {
+            v: 1, message_new: {
+              conversation_id, seq: res.seq, message_id, sender_id: ctx.userId || 'system',
+              kind: (kind || 1) as any, payload: payloadStr, reply_to_id, server_ts_ms: res.serverTs, edit_version: 0,
             },
           });
-          return;
+        } catch (err: any) {
+          logger.error('SendMessage error', { error: err?.message });
         }
-
-        const serverTs = Date.now();
-        let nextSeq = (convSequences.get(conversation_id) || 0) + 1;
-        convSequences.set(conversation_id, nextSeq);
-
-        const newMsg: MessageNew = {
-          conversation_id,
-          seq: nextSeq,
-          message_id,
-          sender_id: ctx.userId || 'system',
-          kind: kind || 1,
-          payload,
-          reply_to_id,
-          server_ts_ms: serverTs,
-          edit_version: 0,
-        };
-
-        processedMessages.set(message_id, {
-          seq: nextSeq,
-          serverTs,
-          message: newMsg,
-        });
-
-        // Persist asynchronously to Neon DB
-        try {
-          const db = getDb();
-          await db
-            .insert(messages)
-            .values({
-              id: message_id,
-              conversationId: conversation_id,
-              seq: nextSeq,
-              senderId: ctx.userId || 'system',
-              kind: kind || 1,
-              payload,
-              replyToId: reply_to_id,
-              clientTs: new Date(serverTs),
-            })
-            .onConflictDoNothing();
-
-          await db
-            .update(conversations)
-            .set({
-              lastSeq: nextSeq,
-              lastMessageId: message_id,
-              lastMessageAt: new Date(serverTs),
-            })
-            .where(eq(conversations.id, conversation_id));
-        } catch (dbErr) {
-          logger.warn('Failed to persist message to Postgres', { error: dbErr });
-        }
-
-        // Send Ack
-        sendServerFrame(ws, {
-          v: v || 1,
-          req_id: req_id || '',
-          ack: {
-            message_id,
-            seq: nextSeq,
-            server_ts_ms: serverTs,
-          },
-        });
-
-        // Broadcast to all active sockets
-        broadcastFrame({
-          v: 1,
-          message_new: newMsg,
-        });
         return;
       }
 
-      // 4. ReceiptUpTo
+      if (frame.sync) {
+        const { conversation_id, after_seq, limit } = frame.sync;
+        const maxLimit = Math.min(Number(limit) || 50, 100);
+        try {
+          const rows = await db.select().from(messages).where(
+            and(eq(messages.conversationId, conversation_id), sql`${messages.seq} > ${Number(after_seq) || 0}`)
+          ).orderBy(messages.seq).limit(maxLimit);
+
+          send(ws, {
+            v: v || 1, req_id: req_id || '',
+            sync_batch: {
+              conversation_id, has_more: rows.length === maxLimit,
+              messages: rows.map((r) => ({
+                conversation_id: r.conversationId, seq: r.seq, message_id: r.id, sender_id: r.senderId,
+                kind: r.kind as any, payload: r.payload, reply_to_id: r.replyToId || undefined,
+                server_ts_ms: r.createdAt.getTime(), edit_version: r.editVersion || 0,
+              })),
+            },
+          });
+        } catch (err: any) {
+          logger.error('SyncRequest error', { error: err?.message });
+        }
+        return;
+      }
+
       if (frame.receipt) {
         const { conversation_id, delivered_upto_seq, read_upto_seq } = frame.receipt;
         try {
-          const db = getDb();
-          await db
-            .update(participants)
-            .set({
-              lastDeliveredSeq: delivered_upto_seq,
-              lastReadSeq: read_upto_seq,
-            })
-            .where(eq(participants.conversationId, conversation_id));
-        } catch (dbErr) {
-          logger.warn('Failed to update receipt in Postgres', { error: dbErr });
-        }
-
-        broadcastFrame({
-          v: 1,
-          receipt: {
-            conversation_id,
-            user_id: ctx.userId || 'system',
-            delivered_upto_seq,
-            read_upto_seq,
-          },
-        });
+          await new MessageService(db as any).updateReceipt(
+            conversation_id, ctx.userId || 'system', Number(delivered_upto_seq) || 0, Number(read_upto_seq) || 0
+          );
+        } catch (_) {}
+        await sendToGroup(conversation_id, {
+          v: 1, receipt: { conversation_id, user_id: ctx.userId || 'system', delivered_upto_seq, read_upto_seq },
+        }, ws);
         return;
       }
 
-      // 5. Typing
       if (frame.typing) {
-        const { conversation_id, is_typing } = frame.typing;
-        for (const [otherWs] of activeSockets.entries()) {
-          if (otherWs !== ws) {
-            sendServerFrame(otherWs, {
-              v: 1,
-              typing: { conversation_id, is_typing },
-            });
-          }
-        }
-        return;
+        await sendToGroup(frame.typing.conversation_id, { v: 1, typing: frame.typing }, ws);
       }
     });
 
     ws.on('close', () => {
       activeSockets.delete(ws);
-      logger.info('WebSocket client disconnected', { remaining: activeSockets.size });
     });
   });
 }

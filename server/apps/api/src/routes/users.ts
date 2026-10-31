@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { verifyAccessToken, type Config } from '@stealth/core';
 import { users, type createDbPool } from '@stealth/db';
-import { ilike, or, isNull } from 'drizzle-orm';
+import { eq, ilike, or, isNull } from 'drizzle-orm';
 
 export function registerUsersRoutes(
   fastify: FastifyInstance,
@@ -20,15 +20,26 @@ export function registerUsersRoutes(
       const payload = verifyAccessToken(token, config.jwtSecret);
       const db = getDb();
       const rows = await db
-        .select()
+        .select({
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          about: users.about,
+          avatarMediaId: users.avatarMediaId,
+          createdAt: users.createdAt,
+        })
         .from(users)
-        .where(isNull(users.deletedAt))
+        .where(eq(users.id, payload.userId))
         .limit(1);
 
+      const user = rows[0];
       return {
         user_id: payload.userId,
         device_id: payload.deviceId,
         username: payload.username,
+        display_name: user?.displayName || payload.username,
+        about: user?.about || '',
+        user,
       };
     } catch {
       return reply.status(401).send({ error: 'Invalid or expired token' });
@@ -45,7 +56,6 @@ export function registerUsersRoutes(
 
     try {
       if (!query) {
-        // Return recent active users (limit 20)
         const recent = await db
           .select({
             id: users.id,
@@ -82,7 +92,7 @@ export function registerUsersRoutes(
         .limit(20);
 
       return { users: results };
-    } catch (err: any) {
+    } catch {
       return reply.status(500).send({ error: 'Failed to search users' });
     }
   };

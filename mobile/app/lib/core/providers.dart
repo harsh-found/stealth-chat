@@ -68,9 +68,11 @@ final syncClientProvider = Provider<StealthSyncClient>((ref) {
   final authState = ref.watch(authControllerProvider);
   final token = authState.session?.accessToken ?? 'dev_token';
   final deviceId = authState.session?.deviceId ?? 'device_android_1';
+  final serverUrl = ref.watch(serverUrlProvider);
+  final wsUrl = ApiConfig.httpToWs(serverUrl);
 
   final client = StealthSyncClient(
-    gatewayUri: Uri.parse(ApiConfig.defaultWsGatewayUrl),
+    gatewayUri: Uri.parse(wsUrl),
     accessToken: token,
     deviceId: deviceId,
     outboxStorage: db,
@@ -90,12 +92,30 @@ final syncClientProvider = Provider<StealthSyncClient>((ref) {
         event.message,
         previewText: body.text,
       );
+    } else if (event is SyncBatchReceived) {
+      for (final msg in event.batch.messages) {
+        final body = MessageBody.fromBytes(msg.payload);
+        await db.insertIncomingMessage(
+          msg,
+          previewText: body.text,
+        );
+      }
     } else if (event is SyncReceiptUpdateReceived) {
       await db.updatePeerReceipt(
         conversationId: event.update.conversationId,
         deliveredUptoSeq: event.update.deliveredUptoSeq,
         readUptoSeq: event.update.readUptoSeq,
       );
+    } else if (event is SyncConnected) {
+      for (final conv in event.helloOk.changedConversations) {
+        final localSeq = client.getLastKnownSeq(conv.conversationId);
+        if (conv.lastSeq > localSeq) {
+          client.requestSync(
+            conversationId: conv.conversationId,
+            afterSeq: localSeq,
+          );
+        }
+      }
     }
   });
 
@@ -115,10 +135,15 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
   final db = ref.watch(databaseProvider);
   final client = ref.watch(syncClientProvider);
   final currentUserId = ref.watch(currentUserIdProvider);
+  final authService = ref.watch(authServiceProvider);
+  final authState = ref.watch(authControllerProvider);
+
   return ChatRepositoryImpl(
     database: db,
     syncClient: client,
     currentUserId: currentUserId,
+    authService: authService,
+    authToken: authState.session?.accessToken,
   );
 });
 

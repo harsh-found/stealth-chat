@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/api_config.dart';
 import '../../data/auth_service.dart';
 import '../../domain/auth_models.dart';
 
@@ -8,12 +9,14 @@ class AuthState {
   final String? errorMessage;
   final UserSession? session;
   final bool isLoginMode;
+  final String serverUrl;
 
   const AuthState({
     this.isLoading = false,
     this.errorMessage,
     this.session,
     this.isLoginMode = true,
+    this.serverUrl = ApiConfig.defaultHttpBaseUrl,
   });
 
   bool get isAuthenticated =>
@@ -24,6 +27,7 @@ class AuthState {
     String? errorMessage,
     UserSession? session,
     bool? isLoginMode,
+    String? serverUrl,
     bool clearError = false,
   }) {
     return AuthState(
@@ -31,6 +35,7 @@ class AuthState {
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       session: session ?? this.session,
       isLoginMode: isLoginMode ?? this.isLoginMode,
+      serverUrl: serverUrl ?? this.serverUrl,
     );
   }
 }
@@ -43,7 +48,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> _initialize() async {
-    // Check if running in automated test suite
     final bool isTestMode = Platform.environment.containsKey('FLUTTER_TEST');
 
     if (isTestMode) {
@@ -61,11 +65,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
 
     try {
+      final savedUrl = await _authService.getServerUrl();
+      state = state.copyWith(serverUrl: savedUrl);
       final saved = await _authService.getSavedSession();
       if (saved != null) {
         state = state.copyWith(session: saved);
       }
     } catch (_) {}
+  }
+
+  Future<void> setServerUrl(String url) async {
+    await _authService.setServerUrl(url);
+    state = state.copyWith(serverUrl: _authService.baseUrl);
   }
 
   void toggleMode() {
@@ -114,7 +125,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     await _authService.clearSession();
-    state = const AuthState(isLoginMode: true);
+    state = state.copyWith(
+      session: null,
+      isLoginMode: true,
+      clearError: true,
+    );
   }
 }
 
@@ -126,4 +141,9 @@ final authControllerProvider =
     StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final service = ref.watch(authServiceProvider);
   return AuthNotifier(service);
+});
+
+final serverUrlProvider = Provider<String>((ref) {
+  final authState = ref.watch(authControllerProvider);
+  return authState.serverUrl;
 });
