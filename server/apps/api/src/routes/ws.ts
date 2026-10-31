@@ -100,9 +100,10 @@ export function registerWsGateway(
           }
 
           const payloadStr = typeof payload === 'string' ? payload : Buffer.from(payload as any).toString('base64');
+          const isUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
           const res = await msgService.sendMessage({
             messageId: message_id, conversationId: conversation_id, senderId: ctx.userId || 'system',
-            senderDeviceId: ctx.deviceId, kind: kind || 1, payload: payloadStr,
+            senderDeviceId: isUuid(ctx.deviceId) ? ctx.deviceId : undefined, kind: kind || 1, payload: payloadStr,
             replyToId: reply_to_id, clientTs: new Date(Number(frame.send.client_ts_ms) || Date.now()),
           });
 
